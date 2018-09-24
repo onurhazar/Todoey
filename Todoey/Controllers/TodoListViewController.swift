@@ -7,11 +7,13 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
 
     var itemArray = [Item]()
     let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
 //    let defaults = UserDefaults.standard
     
@@ -66,13 +68,19 @@ class TodoListViewController: UITableViewController {
         
         let itemToSelect = itemArray[indexPath.row]
         
+        //how to delete from core data
+//        context.delete(itemToSelect)
+//        itemArray.remove(at: indexPath.row)
+        
         itemToSelect.done = !itemToSelect.done
-        
+
         let cell = tableView.cellForRow(at: indexPath)
-        
         cell?.accessoryType = cell?.accessoryType == .checkmark ? .none : .checkmark
         
         saveItems()
+        
+        //refresh if you delete data
+//        self.tableView.reloadData()
     }
     
     //MARK - Add New Items
@@ -88,7 +96,7 @@ class TodoListViewController: UITableViewController {
             
             let text = textField.text ?? "New Item"
             
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             newItem.title = text
             
             self.itemArray.append(newItem)
@@ -114,23 +122,20 @@ class TodoListViewController: UITableViewController {
     //MARK - Data operations for prespecified plist
     
     func saveItems() {
-        let encoder = PropertyListEncoder()
+       
         do {
-            let data = try encoder.encode(self.itemArray)
-            try data.write(to: self.dataFilePath!)
+            try context.save()
         } catch {
-            print("Error on encoding")
+            print("Error saving context \(error)")
         }
     }
     
     func loadItems(){
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("Error on decoding")
-            }
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        do {
+            itemArray = try context.fetch(request)
+        } catch {
+            print("Error fetching data from context \(error)")
         }
     }
 }
